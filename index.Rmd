@@ -1,0 +1,382 @@
+---
+title: "**<b style = 'color : #E34B2A;'>Sesión 3: Regresión Lineal</b>**"
+subtitle: 'Taller de Estadística aplicada en R para ciencias sociales - POLITAI'
+date: "2023-11-24"
+date-modified: ''
+author: "Joel Ccallocunto \n **[@luccemhu](https://github.com/luccemhu)** \n a20196510@pucp.edu.pe"
+theme:
+  light: flatly
+  dark: darkly
+toc: true
+always_allow_html: true
+format:
+  html:
+    mainfont: Georgia
+    self-contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r,echo=FALSE, out.width="65%",fig.align="center"}
+knitr::include_graphics("./images/politai.jpg") 
+```
+
+
+Hasta el momento, en las diferentes sesiones del taller, nos hemos encontrado en el campo del análisis bivariado. La sesión pasada vimos una introducción al modelo de regresión lineal simple, aproximándonos a la causalidad, siendo capaces de estimar los valores de Y para diferentes valores de X. Sin embargo, en el mundo social, difícilmente se pueden explicar los fenómenos de interés recurriendo a una sola variable. O, más aún, incluso si nos interesa evaluar el impacto/efecto que tiene una variable en particular sobre un fenómeno de estudio, hay muchas otras cosas que también pueden influir en aquello que nos interesa explorar. Por ello, necesitamos recurrir al análisis multivariado y aproximarnos un poco más a la lógica de *causalidad estadística*.
+
+Una primera forma de aproximarse más a la causalidad es importante entender la lógica del *control estadístico*, es aquí donde la regresión se vuelve fundamental. El control estadístico nos permite “eliminar” explicaciones alternativas, en tanto se aisla el efecto de otras variables. La idea es...
+
+  - Evaluar si la asociación entre X - Y permanece si se remueve el efecto de otra variable, es decir, si se controla por una tercera variable.
+  - Se analiza la relación entre X - Y para valores similares o iguales de una variable Z. De esta manera se elimina la influencia de Z en la relación entre X - Y. Es un paso en el establecimiento de X -> Y.
+  - Si la relación entre X - Y desaparece cuando se controla por Z, se dice que la relación era espúrea.
+
+El control estadístico permite aproximarse al control experimental desde los métodos observacionales. 
+
+Veamos un ejemplo: Los factores que explican los recursos destinados a los municipios 
+para desarrollo vial durante el primer gobierno del presidente Uribe.
+
+```{r}
+#getwd() 
+#setwd("")
+library(rio)
+dataPAVI = import("./images/pavimentando con votos.sav")
+```
+
+```{r}
+#names(dataPAVI)
+#str(dataPAVI)
+```
+
+**Formateo:**
+
+- Distingamos las variables numéricas y (nominales) dicotómicas
+
+```{r}
+# forma corta
+dataPAVI[,c(1:2, 5, 7:8)] = lapply(dataPAVI[,c(1:2, 5, 7:8)],as.numeric)
+dataPAVI[,c(3:4, 6)] = lapply(dataPAVI[,c(3:4, 6)],as.factor)
+```
+
+```{r}
+# forma larga
+#dataPAVI$poblacioncienmil = as.numeric(dataPAVI$poblacioncienmil)
+#dataPAVI$nbi = as.numeric(dataPAVI$nbi)
+
+#dataPAVI$consejocomunal = as.factor(dataPAVI$consejocomunal)
+#dataPAVI$priorizado = as.factor(dataPAVI$priorizado)
+
+#dataPAVI$uribista = as.numeric(dataPAVI$uribista)
+
+#dataPAVI$ejecucion = as.factor(dataPAVI$ejecucion)
+
+#dataPAVI$apropiaciondolar = as.numeric(dataPAVI$apropiaciondolar)
+#dataPAVI$pctopo = as.numeric(dataPAVI$pctopo)
+```
+
+**HIPOTESIS 1:** 
+============================================================
+
+  - Refiere a la asignación presupuestal en relación a los criterios técnicos determinados por documentos elaborados por el gobierno / La asignación presupuestal se debe a criterios técnicos.
+
+- `apropiaciondolar` -> Variable dependiente
+
+- `priorizado` -> variable independiente - categorica dummy (sí y no). 
+
+```{r}
+modelo1 = lm(apropiaciondolar ~ priorizado, data = dataPAVI) # (Y~X)
+summary(modelo1)
+```
+
+**Gráfico lineal:**
+  
+```{r,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+library(ggplot2)
+ggplot(dataPAVI, aes(x = priorizado, y = apropiaciondolar)) +
+  geom_point(colour="red") +  xlab("priorizado") +  ylab("apropiaciondolar") +
+  ggtitle("priorizado / apropiaciondolar") +
+  theme_light() + geom_smooth(method="lm", se = F)
+```
+
+Nota: no es regresión lineal múltiple, pues *Solo tenemos una variable independiente -> priorizado* 
+
+INTERPRETACIÓN:
+
+  + Al revisar el p-value (0.9961), el cual es mayor a 0.05, se determina que el modelo1 no es válido para predecir la variable dependiente (apropiaciondolar) a partir de la variable (priorizado). Parece que la H1 no funciona, es decir, no aporta ninguna explicación.
+
+**HIPOTESIS 2:** 
+============================================================
+
+  - La asignación presupuestal en infraestructura vial en Colombia  esponde a negociaciones bilaterales entre el ejecutivo y el legislativo basadas en necesidades políticas y electorales de corto plazo // Reﬁere a la asignación presupuestal en relación a negociaciones basadas en necesidades políticas y electorales (mecanismo clientelista)
+
+
+variables: 
+      alcalde uribista o no uribista-categorica dicotomica
+      porcentaje de oposicion -numérica-, 
+
+```{r}
+#str(dataPAVI$uribista)
+
+# Uribista tiene que estar como factor:
+dataPAVI$uribista <- as.factor(dataPAVI$uribista)
+table(dataPAVI$uribista)
+```
+ 
+## Modelo 2
+```{r}
+modelo2 = lm(apropiaciondolar ~ uribista + pctopo, data = dataPAVI) #aca se le añade otra variable con + 
+summary(modelo2)
+```
+
+  - Si una municipalidad tiene alcalde uribista, el presupuesto de infraestructura vial disminuye en 3.04661.
+
+  - Si una municipalidad incrementa su porcentaje oposición al uribismo en una unidad, el presupuesto de infraestructura vial disminuye en 0.04209.
+
+```{r, results = F, message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+library(scatterplot3d)
+(a=scatterplot3d(dataPAVI[,c('uribista', 'pctopo', 'apropiaciondolar')]))
+```
+
+    H0: las variables independientes no influyen en la variable dependiente / (Los coeficientes de las variables independientes son iguales a cero)
+    H1: las variables independientes sí influyen en la variable dependiente
+    
+  + Al revisar el p-value (0.01261), el cual es menor a 0.05, se determina que el modelo2 es válido para predecir la variable dependiente (apropiaciondolar) a partir de las variables (uribista + pctopo). Por lo que podemos rechazar la hipotesos nula.
+  
+  + Al revisar el p-value (2.2e-16), el cual es menor a 0.05, rechazamos la H0. Por lo que a un 95% de confianza las variables independientes (educ) y (experiencia) tienen impacto significativo en la variable dependiente (salario_actual). 
+  
+  Pero al revisar el p-value (0.1330) de la otra variable independiente (antiguedad), advertimos que es mayor a 0.05, a saber, no aporta significativamente al modelo5. Por tanto, se recomienda construir un modelo de regresión sin la variable (antiguedad). Pese a ello, para la interpretacón lo tomaremos en cuenta. Así se determina que el modelo5 solo es válido para predecir el salario actual de un trabjador a partir de su educación y experiencia. 
+
+
+## Frente a uribista 
+
+    H0: Si un municipio tenga o no tenga un alcalde uribista no influye en la variable independiente (la asignación presupuestal) 
+    H1: Si un municipio tenga o no tenga un alcalde uribista sí influye en la variable independiente (la asignación presupuestal)
+
+El p-value específico de esta variable es 0.00987, menor a 0.05, por lo que la variable uribista sí impacta en la asignacion presupuestal. Rechazamos la H0.
+
+#INTERPRETACIÓN:
+  - sentido: inverso -3.04661
+  - variable uribista: 
+    - 0: no fue uribista el alcalde
+    - 1: sí fue uribista el alcalde
+
+  + Cuando un municipio tiene un alcalde uribista, manteniendo constante el porcentaje de oposición, la asignación presupuestal vial disminuye en 3.04661 millones de dólares 
+
+## Frente a pctopo (No es signifcativa)      
+
+  + El p-value especifico para la variable pctopo es 0.06539, mayor a 0.05,por lo que fracasamos al rechazar la H0.La variable no impacta significativamente en la (variable dependiente) asignacion presupuestal.
+
+  - Explicando su sentido: Inverso -0.04209
+
+  + Cuando un porcentaje de oposición incrementa en una unidad (1%) (o punto procentual mayor), mateniendo constante el ser una alcalde uribista, la asignación presupuestal vial disminuye en 0.04209 millones de dólares. 
+
+Coeficientes:
+
+asignaciónvial = 11.93907 + (-3.04661*uribista1) + (-0.04209*pctopo)
+
+EJEMPLOS:
+
+- Pero antes: ¿cómo saber el porcentaje de oposición de una municipalidad que es uribista? 
+
+- En este caso usaremos summary para conocer el min y el max
+
+```{r}
+summary(dataPAVI$pctopo)
+```
+
+Entonces, ¿qué sucede con un municipio que tiene un alcalde uribista y que tiene 27.874 de porcentaje de oposición?
+
+```{r}
+Y1 <- 11.93907+(-3.04661*1)+(-0.04209*27.874)
+Y1
+```
+
+- Un municipio con esas características va a tener un presupuesto de 7.719243 millones
+
+Ahora: ¿qué sucede con un municipio que no tiene un alcalde uribista y que tiene 27.874 de porcentaje de oposición?
+
+```{r}
+Y2 <- 11.93907+(-3.04661*0)+(-0.04209*27.874)
+Y2
+```
+
+- Un municipio con esas características va a tener un presupuesto de 10.76585 millones
+
+CONCLUSIÓN: 
+  
+   + El gobierno prefirió a los alcaldes no uribistas y también donde no tenían tanto porcentaje de oposición. 
+
+
+
+3. El modelo ayuda a predecir el 0.7% de la variabilidad de la variable dependiente asignación presupuestal vial (apropiaciondolar).
+
+*de la variabilidad de la variable dependiente = del cambio sistemático de nuestra variable dependiente*
+
+Entonces, la variable que más impacta es "Uribista" --> PARA ESTAR MÁS SEGUROS, GUIARNOS POR LO COEFICIENTES ESTANDARIZADOS:
+
+```{r}
+#install.packages("lm.beta")
+library(lm.beta)
+lm.beta(modelo2) # Nos otorga los coeficientes estandarizados 
+# para ver los efectos de las variables
+```
+
+*NOTA: FIJARNOS EN EL VALOR ABSOLUTO, ES DECIR, SIN EL SIGNO*
+
+La variable uribista1 (-0.08763178) impacta más en el modelo. o sea, tener o no alcalde Uribista impacta más en el modelo. 
+
+ ###PARA VISUALIZAR LOS DATOS
+#Pequeña tabla 
+```{r}
+#install.packages("jtools")
+library(jtools)
+summ(modelo2)
+```
+*NOTA: 
+Est. -> Estimate
+P. -> P-value
+S.E. -> ERROR ESTANDAR
+t val. -> LOS VALORES T -> t value (en summary)*
+
+
+Grafico de los coeficientes
+
+```{r ,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+#plot_coefs(modelo2)
+plot_coefs(modelo1, modelo2)
+```
+INTERPRETACIÓN:
+
+Ser uribista1 tiene un efecto más lejano de cero y el porcentaje de oposicion sale muy cercano a cero.
+
+*la linea es el intervalo de confianza del coeficiente, es decir, dicho coeficiente puede variar de acuerdo a la muestra que tengamos*   
+
+*El cuadradito es el promedio del coeficiente y la linea que le cruza es el intervalo de confianza.*
+
+
+#ahora con más variables... tabla resumen
+
+```{r,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+library(huxtable) #install.packages("huxtable")
+
+library(officer) #install.packages("officer")
+export_summs(modelo1, modelo2, scale = TRUE,
+             error_format = "[{conf.low}, {conf.high}]")
+```
+
+INTERPRETACIÓN:
+
++ 
+
+
+
+# HIPOTESIS 3 :la asignación presupuestal en infraestructura vial en Colombia responde al esfuerzo del gobierno por fortalecer su base social de apoyo local a través de los Consejos Comunales de Gobierno.
+
+AHORA CON LAS VARIABLES INDEPENDIENTES: consejocomunal + ejecucion
+```{r}
+modelo3 = lm(apropiaciondolar ~ consejocomunal + ejecucion, data = dataPAVI) 
+summary(modelo3)
+```
+  
+  - Si la municipalidad ha tenido la instalación del consejo comunal , el presupuesto de infraestructura vial incrementaría en 16.60 millones de dólares.
+
+
+rechazar la H0, p-value (2.198e-14) menor a 0.05, sí explica
+
+la variable consejocomunal que indica esfuerzops populista si 
+
+
+#PARA VER LA UNIDAD
+```{r}
+str(dataPAVI$consejocomunal) #ES DICOTÓMICA 
+```
+
+INTERPRETACIÓN:
+
+consejocomunal  
+Manteniendo fija la variable ejecución, si la alcaldía presenta consejo comunal el presupesto vial asiganado se incrementa en  16.6023 de dolares, en comparación de un consejo que no es comunal.
+
+ejecucion        
+
+##Frente a ejecucion (No es signifcativa)      
+
+El p-value especifico para la variable ejecucion es 0.623, mayor a 0.05, por lo que fracasamos al rechazar la H0. La variable no impacta significativamente en la (variable dependiente) asignación presupuestal.
+
+Explicando su sentido: directo 1.2232 
+
+Cuando la ejecucion se incrementa en una unidad (1%) (o punto procentual mayor), mateniendo constante la varaible independiente consejocomunal, la asignación presupuestal vial aumenta en 1.2232 millones de dólares. 
+
+Coeficientes:
+
+Presupuesto asignación vial = 7.3214 + (-3.04661*uribista1) + (-0.04209*pctopo)
+
+EJEMPLOS:
+
+
+
+
+
+# HIPOTESIS GENERAL: La asignación presupuestal se debe a criterios técnicas, políticos y populistas.
+============================================================
+
+3 hipotesis + población en 100 mil y necesidades básicas insatisfechas
+```{r}
+modelo4 = lm(apropiaciondolar ~ priorizado + uribista + pctopo + consejocomunal + ejecucion + poblacioncienmil + nbi,data = dataPAVI) 
+summary(modelo4)
+```
+
+
+```{r}
+library(stargazer) 
+stargazer(modelo1,modelo2,modelo3,modelo4, type = "text")
+```
+
+
+```{r,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+library(jtools)
+plot_coefs(modelo1, modelo2, modelo3, modelo4)
+```
+
+Modelo1 -> nos dice que no influye nada la priorización técnica
+
+el modelo 4 -> es distinto porque hemos añadido las variables de los modelos anteriores a él, pero ademas las variables población en 100 mil y necesidades básicas insatisfechas.
+
+parece ser que si solamente tuvisiesempos que explicar la aporacion dolar, a traves de la priorizacion tecina, no logaramos explicarla.
+
+Pero si le añadimos otras variables como sucede en el modelo4 CON LAS VARIABALES población en 100 mil y necesidades básicas insatisfechas, parece ser que el ser priroizado tiene un efecto inverso (negativo) en la aporpiacion dolar. es decir que los criterios tecnicos tiene un efecto inverso en la aporpaicon dolar. es decir, de no tener  ninguna relacion, ahora tiene algun impacto negativo. 
+En efecto, si observamos los intervalos de confianza de priorizado1 en el modelo 4, la linea (vigote) esta myr cerca de cero, no termina de impactar.  
+
+En los modelos 2 y 4 se mantiene sin ningun efecto en la asignacion presupuestal el porcfentaje de oposicion 
+
+Respecto al modelo 4, nbi parece no impactar nada, en contraste con la POBLACION EN CIEN MIL 
+
+Respecto a consejo comunal en el modelo 4 se hace más pequeño cuango agreagmos las otras dos variables, respecto al modelo 3. Los mismo podriamos señalar de la variable ejecución, pero sus respectivos inetrvalos tocan el cero, entonces, la variable ehecucion tampoco impacta en la apropicacion dolar (presupuesto.)
+
+
+
+
+
+
+```{r}
+#install.packages("jtools")
+library(jtools)
+#install.packages("ggstance")
+library(ggstance)
+#install.packages("broom.mixed")
+library(broom.mixed)
+```
+
+```{r}
+modelo5=lm(apropiaciondolar ~ uribista + pctopo + consejocomunal + poblacioncienmil + nbi,data = dataPAVI)
+summary(modelo5)
+```
+
+
+```{r,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+
+testplot1 <- plot_summs(modelo4, modelo5, legend.title ="Determinantes de la asignación presupuestal", scale = TRUE, robust = TRUE)
+testplot1
+```
+
+
